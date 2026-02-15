@@ -1,0 +1,104 @@
+select job_title_short, salary_year_avg, 
+CASE 
+    WHEN job_location = 'Anywhere' THEN 'REMOTE'
+    WHEN job_location = 'New York' THEN 'LOCAL'
+    ELSE 'ONSITE'
+END AS JOB_WORK_LOCATION
+from job_postings_fact
+WHERE salary_year_avg IS NOT NULL; 
+
+select max(salary_year_avg) as maximun,
+min(salary_year_avg) as minimum
+from job_postings_fact;
+
+--15000-70000 low 
+--70000-250000 standard
+--250000-960000 high
+-- create a salary bucket?!
+select job_title_short, job_location,salary_year_avg,
+case 
+    when salary_year_avg BETWEEN 15000 and 70000 then 'low'
+    when salary_year_avg BETWEEN 70000 and 250000 then 'standard'
+    else 'high'
+end as salary_rating
+from job_postings_fact
+where job_title_short ='Data Analyst' and salary_year_avg IS NOT NULL;
+
+select *
+from (
+    select *
+    from job_postings_fact
+    where extract(month from job_posted_date) = 12
+) as december_jobs;
+
+WITH may_jobs as 
+    (SELECT * 
+    FROM job_postings_fact
+    where extract(month from job_posted_date)= 5)
+
+select* 
+from may_jobs
+where job_title_short = 'Data Scientist';
+
+--using subquery to get company name with no degree mention from dimension table 
+
+select name as company_name
+from company_dim
+where company_id IN (
+select company_id
+from job_postings_fact
+where job_no_degree_mention = TRUE) ; 
+
+--using CTE & join, find out highest job postings per company
+
+with company_count as 
+    (select company_id, 
+    count(*) as count
+    from 
+    job_postings_fact
+    GROUP BY 
+    company_id)
+
+select company_dim.name, company_count.count
+from company_dim
+left join company_count on company_count.company_id = company_dim.company_id
+order by company_count.count desc
+limit 20;
+
+select count(job_postings_fact.company_id) as count, name as company_name
+from job_postings_fact
+left join company_dim on company_dim.company_id = job_postings_fact.company_id
+group by company_dim.name
+order by job_postings_fact.count desc
+limit 20;
+
+-- top 5 skills most frequently mention in job_postings
+
+
+-- pending luke subq &cte practice prob!
+
+-- for JOINS ID SHOULD BE UNIQUE 
+
+with CTE as (
+    select 
+        skill_id, 
+        count(*) as count_skills
+from 
+    skills_job_dim as skills_on_job
+inner join job_postings_fact as job_postings
+on skills_on_job.job_id = job_postings.job_id
+where 
+    job_postings.job_work_from_home = TRUE
+group by 
+    skill_id) 
+
+select 
+    skills_d.skill_id, 
+    skills as skill_name,
+    count_skills
+from CTE 
+inner join skills_dim  as skills_d
+on CTE.skill_id = skills_d.skill_id
+order by 
+    count_skills DESC;
+
