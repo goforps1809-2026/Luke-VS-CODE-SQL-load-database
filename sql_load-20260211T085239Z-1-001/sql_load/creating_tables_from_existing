@@ -1,4 +1,0 @@
-
-select job_posted_date
-from march_job;
-
